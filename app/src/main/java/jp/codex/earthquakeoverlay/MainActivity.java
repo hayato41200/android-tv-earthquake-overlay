@@ -28,7 +28,7 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     Spinner prefecture, city, detail, displayCondition, alertType, alertPrefecture, alertCity, alertScale;
-    TextView status;
+    TextView status, summary;
     final ArrayList<String> prefectures = new ArrayList<>();
     final ArrayList<String> cities = new ArrayList<>();
     final ArrayList<String> alertCities = new ArrayList<>();
@@ -53,16 +53,30 @@ public class MainActivity extends Activity {
         title.setTextColor(Color.WHITE);
         box.addView(title);
 
+        summary = new TextView(this);
+        summary.setTextColor(Color.WHITE);
+        summary.setTextSize(16);
+        summary.setPadding(0, 14, 0, 18);
+        box.addView(summary);
+
         TextView hint = new TextView(this);
         hint.setText("自宅地域を選択してください。自宅は震度1から、その他は震度3以上を表示します。");
         hint.setTextColor(Color.LTGRAY);
         hint.setPadding(0, 16, 0, 16);
         box.addView(hint);
 
+        box.addView(section("基本設定"));
+        box.addView(description("地震情報を表示する基本ルールを選びます。"));
         box.addView(label("通常の表示条件"));
         displayCondition = spinner(new String[]{"自宅：震度1以上／その他：震度3以上", "全国：震度1以上", "全国：震度3以上", "自宅地域のみ"});
         box.addView(displayCondition);
+        displayCondition.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { updateSummary(); }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { updateSummary(); }
+        });
 
+        box.addView(section("自宅地域"));
+        box.addView(description("自宅地域は震度1以上、その他の地域は震度3以上を表示します。"));
         TextView prefLabel = label("都道府県");
         box.addView(prefLabel);
         prefecture = new Spinner(this);
@@ -78,32 +92,55 @@ public class MainActivity extends Activity {
         city.setAdapter(cityAdapter);
         box.addView(city);
 
+        city.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { updateSummary(); }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { updateSummary(); }
+        });
+
         prefecture.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 updateCities(prefecture.getSelectedItem() == null ? "" : prefecture.getSelectedItem().toString());
+                updateSummary();
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
 
-        box.addView(label("特定地域の追加通知"));
+        box.addView(section("特定地域の追加通知"));
+        box.addView(description("通常の表示条件とは別に、指定地域で指定震度以上を表示します。"));
+        box.addView(label("追加通知の種類"));
         alertType = spinner(new String[]{"追加通知なし", "都道府県", "市区町村"});
         box.addView(alertType);
+        box.addView(label("通知対象の都道府県"));
         alertPrefecture = spinner(prefectures.toArray(new String[0]));
         box.addView(alertPrefecture);
+        box.addView(label("通知対象の市区町村"));
         alertCity = new Spinner(this);
         alertCityAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, alertCities);
         alertCityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         alertCity.setAdapter(alertCityAdapter);
         box.addView(alertCity);
+        box.addView(label("通知する震度"));
         alertScale = spinner(new String[]{"震度1以上", "震度2以上", "震度3以上", "震度4以上", "震度5弱以上", "震度5強以上", "震度6弱以上", "震度6強以上", "震度7以上"});
         box.addView(alertScale);
+        alertScale.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { updateSummary(); }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { updateSummary(); }
+        });
         alertPrefecture.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 updateAlertCities(alertPrefecture.getSelectedItem() == null ? "" : alertPrefecture.getSelectedItem().toString());
+                updateSummary();
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
 
+        alertType.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { updateAlertControls(); updateSummary(); }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { updateAlertControls(); updateSummary(); }
+        });
+
+        box.addView(section("表示方法"));
+        box.addView(description("各地の震度をどこまで細かく表示するかを選びます。"));
         TextView detailLabel = label("各地の震度の表示粒度");
         box.addView(detailLabel);
         detail = new Spinner(this);
@@ -128,6 +165,7 @@ public class MainActivity extends Activity {
                     .putString("alertPref", alertPref).putString("alertCity", alertCityName)
                     .putInt("alertScale", alertScale.getSelectedItemPosition()).apply();
             start();
+            updateSummary();
             status.setText("保存しました　" + pref + " " + selectedCity);
         });
         box.addView(save);
@@ -184,7 +222,57 @@ public class MainActivity extends Activity {
         int alertCityIndex = findIndex(alertCities, settings.getString("alertCity", ""));
         if (alertCityIndex >= 0) alertCity.setSelection(alertCityIndex);
         alertScale.setSelection(settings.getInt("alertScale", 2));
+        updateAlertControls();
+        updateSummary();
         status.setText(Settings.canDrawOverlays(this) ? "権限：許可済み" : "権限：未許可");
+    }
+
+    TextView section(String text) {
+        TextView v = new TextView(this);
+        v.setText(text);
+        v.setTextColor(Color.WHITE);
+        v.setTextSize(20);
+        v.setPadding(0, 24, 0, 6);
+        return v;
+    }
+
+    TextView description(String text) {
+        TextView v = new TextView(this);
+        v.setText(text);
+        v.setTextColor(Color.LTGRAY);
+        v.setPadding(0, 0, 0, 8);
+        return v;
+    }
+
+    void updateAlertControls() {
+        if (alertType == null) return;
+        int type = alertType.getSelectedItemPosition();
+        boolean prefEnabled = type >= 1;
+        boolean cityEnabled = type == 2;
+        alertPrefecture.setEnabled(prefEnabled);
+        alertCity.setEnabled(cityEnabled);
+        alertScale.setEnabled(prefEnabled);
+        alertPrefecture.setAlpha(prefEnabled ? 1.0f : 0.45f);
+        alertCity.setAlpha(cityEnabled ? 1.0f : 0.45f);
+        alertScale.setAlpha(prefEnabled ? 1.0f : 0.45f);
+    }
+
+    String selected(Spinner spinner) {
+        return spinner == null || spinner.getSelectedItem() == null ? "" : spinner.getSelectedItem().toString();
+    }
+
+    void updateSummary() {
+        if (summary == null || displayCondition == null || alertType == null) return;
+        String text = "現在の設定\n" + selected(displayCondition);
+        text += "\n自宅：" + selected(prefecture) + " " + selected(city);
+        if (alertType.getSelectedItemPosition() == 0) {
+            text += "\n追加通知：なし";
+        } else if (alertType.getSelectedItemPosition() == 1) {
+            text += "\n追加通知：" + selected(alertPrefecture) + "・" + selected(alertScale);
+        } else {
+            text += "\n追加通知：" + selected(alertPrefecture) + " " + selected(alertCity) + "・" + selected(alertScale);
+        }
+        summary.setText(text);
     }
 
     Spinner spinner(String[] values) {
