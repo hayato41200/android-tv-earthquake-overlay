@@ -16,6 +16,7 @@ public class MainActivity extends Activity {
         Button permission=new Button(this); permission.setText("オーバーレイ権限を設定"); permission.setOnClickListener(v->{startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:"+getPackageName())));}); box.addView(permission);
         Button test=new Button(this); test.setText("表示テスト"); test.setOnClickListener(v->{start(); sendBroadcast(new Intent(OverlayService.TEST_ACTION));}); box.addView(test);
         Button latest=new Button(this); latest.setText("最新APIでテスト"); latest.setOnClickListener(v->{start(); sendBroadcast(new Intent(OverlayService.TEST_LATEST_ACTION));}); box.addView(latest);
+        Button update=new Button(this); update.setText("更新を確認してインストール"); update.setOnClickListener(v->{UpdateManager.openInstallPermission(this); UpdateManager.check(this,(ok,tag)->runOnUiThread(()->{if(ok){UpdateManager.downloadAndInstall(this);}}));}); box.addView(update);
         status=new TextView(this); status.setTextColor(Color.LTGRAY); status.setPadding(0,20,0,0); box.addView(status); setContentView(box);
         prefecture.setText(getSharedPreferences("settings",0).getString("pref","")); city.setText(getSharedPreferences("settings",0).getString("city","")); status.setText(Settings.canDrawOverlays(this)?"権限：許可済み":"権限：未許可");
     }
