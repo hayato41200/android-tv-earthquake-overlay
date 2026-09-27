@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ScrollView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -162,7 +163,10 @@ public class MainActivity extends Activity {
         status.setTextColor(Color.LTGRAY);
         status.setPadding(0, 20, 0, 0);
         box.addView(status);
-        setContentView(box);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(box);
+        setContentView(scroll);
 
         String savedPref = getSharedPreferences("settings", 0).getString("pref", "");
         String savedCity = getSharedPreferences("settings", 0).getString("city", "");
