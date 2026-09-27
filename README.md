@@ -1,6 +1,10 @@
-# 地震テロップ（Android TV / TCL P79B向け）
+# 地震テロップ（Android TV）
 
 GitHub repository: https://github.com/hayato41200/android-tv-earthquake-overlay
+
+## 実機テスト
+
+現在、実機での表示・動作確認はTCL P79Bでのみ行っています。他のAndroid TV / Google TV機器での動作は未確認です。
 
 Android TV / Google TV上で動作する最小版です。P2P地震情報の公開APIを30秒間隔で確認し、オーバーレイ権限が許可されている場合に画面上端へ表示します。
 
