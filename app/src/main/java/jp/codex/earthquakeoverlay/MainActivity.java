@@ -26,12 +26,13 @@ import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends Activity {
-    Spinner prefecture, city, detail;
+    Spinner prefecture, city, detail, displayCondition, alertType, alertPrefecture, alertCity, alertScale;
     TextView status;
     final ArrayList<String> prefectures = new ArrayList<>();
     final ArrayList<String> cities = new ArrayList<>();
+    final ArrayList<String> alertCities = new ArrayList<>();
     final LinkedHashMap<String, ArrayList<String>> citiesByPref = new LinkedHashMap<>();
-    ArrayAdapter<String> cityAdapter;
+    ArrayAdapter<String> cityAdapter, alertCityAdapter;
 
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
@@ -57,6 +58,10 @@ public class MainActivity extends Activity {
         hint.setPadding(0, 16, 0, 16);
         box.addView(hint);
 
+        box.addView(label("通常の表示条件"));
+        displayCondition = spinner(new String[]{"自宅：震度1以上／その他：震度3以上", "全国：震度1以上", "全国：震度3以上", "自宅地域のみ"});
+        box.addView(displayCondition);
+
         TextView prefLabel = label("都道府県");
         box.addView(prefLabel);
         prefecture = new Spinner(this);
@@ -79,6 +84,25 @@ public class MainActivity extends Activity {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
 
+        box.addView(label("特定地域の追加通知"));
+        alertType = spinner(new String[]{"追加通知なし", "都道府県", "市区町村"});
+        box.addView(alertType);
+        alertPrefecture = spinner(prefectures.toArray(new String[0]));
+        box.addView(alertPrefecture);
+        alertCity = new Spinner(this);
+        alertCityAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, alertCities);
+        alertCityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        alertCity.setAdapter(alertCityAdapter);
+        box.addView(alertCity);
+        alertScale = spinner(new String[]{"震度1以上", "震度2以上", "震度3以上", "震度4以上", "震度5弱以上", "震度5強以上", "震度6弱以上", "震度6強以上", "震度7以上"});
+        box.addView(alertScale);
+        alertPrefecture.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                updateAlertCities(alertPrefecture.getSelectedItem() == null ? "" : alertPrefecture.getSelectedItem().toString());
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
+
         TextView detailLabel = label("各地の震度の表示粒度");
         box.addView(detailLabel);
         detail = new Spinner(this);
@@ -94,8 +118,14 @@ public class MainActivity extends Activity {
         save.setOnClickListener(v -> {
             String pref = prefecture.getSelectedItem() == null ? "" : prefecture.getSelectedItem().toString();
             String selectedCity = city.getSelectedItem() == null ? "" : city.getSelectedItem().toString();
+            String alertPref = alertPrefecture.getSelectedItem() == null ? "" : alertPrefecture.getSelectedItem().toString();
+            String alertCityName = alertCity.getSelectedItem() == null ? "" : alertCity.getSelectedItem().toString();
             getSharedPreferences("settings", 0).edit().putString("pref", pref).putString("city", selectedCity)
-                    .putInt("detail", detail.getSelectedItemPosition()).apply();
+                    .putInt("detail", detail.getSelectedItemPosition())
+                    .putInt("displayCondition", displayCondition.getSelectedItemPosition())
+                    .putInt("alertType", alertType.getSelectedItemPosition())
+                    .putString("alertPref", alertPref).putString("alertCity", alertCityName)
+                    .putInt("alertScale", alertScale.getSelectedItemPosition()).apply();
             start();
             status.setText("保存しました　" + pref + " " + selectedCity);
         });
@@ -141,7 +171,24 @@ public class MainActivity extends Activity {
         updateCities(prefectures.isEmpty() ? "" : prefectures.get(Math.max(0, prefIndex)));
         int cityIndex = findIndex(cities, savedCity);
         if (cityIndex >= 0) city.setSelection(cityIndex);
+        android.content.SharedPreferences settings = getSharedPreferences("settings", 0);
+        displayCondition.setSelection(settings.getInt("displayCondition", 0));
+        alertType.setSelection(settings.getInt("alertType", 0));
+        int alertPrefIndex = findIndex(prefectures, settings.getString("alertPref", ""));
+        if (alertPrefIndex >= 0) alertPrefecture.setSelection(alertPrefIndex);
+        updateAlertCities(alertPrefecture.getSelectedItem() == null ? "" : alertPrefecture.getSelectedItem().toString());
+        int alertCityIndex = findIndex(alertCities, settings.getString("alertCity", ""));
+        if (alertCityIndex >= 0) alertCity.setSelection(alertCityIndex);
+        alertScale.setSelection(settings.getInt("alertScale", 2));
         status.setText(Settings.canDrawOverlays(this) ? "権限：許可済み" : "権限：未許可");
+    }
+
+    Spinner spinner(String[] values) {
+        Spinner s = new Spinner(this);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, values);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        s.setAdapter(adapter);
+        return s;
     }
 
     TextView label(String text) {
@@ -178,6 +225,13 @@ public class MainActivity extends Activity {
         ArrayList<String> list = citiesByPref.get(pref);
         if (list != null) cities.addAll(list);
         cityAdapter.notifyDataSetChanged();
+    }
+
+    void updateAlertCities(String pref) {
+        alertCities.clear();
+        ArrayList<String> list = citiesByPref.get(pref);
+        if (list != null) alertCities.addAll(list);
+        if (alertCityAdapter != null) alertCityAdapter.notifyDataSetChanged();
     }
 
     int findIndex(ArrayList<String> values, String wanted) {
