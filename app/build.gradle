@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 
 android { namespace 'jp.codex.earthquakeoverlay'; compileSdk 35
     buildFeatures { buildConfig true }
-    defaultConfig { applicationId 'jp.codex.earthquakeoverlay'; minSdk 26; targetSdk 35; versionCode 3; versionName '1.0.3' }
+    defaultConfig { applicationId 'jp.codex.earthquakeoverlay'; minSdk 26; targetSdk 35; versionCode 4; versionName '1.0.4' }
     signingConfigs { release { storeFile file(System.getenv('ANDROID_KEYSTORE_FILE') ?: 'release-keystore.jks'); storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD'); keyAlias System.getenv('ANDROID_KEY_ALIAS'); keyPassword System.getenv('ANDROID_KEY_PASSWORD') } }
     buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
 }
